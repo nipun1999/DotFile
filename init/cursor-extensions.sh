@@ -3,6 +3,7 @@
 # Cursor Extensions Installer
 # Part of the general dotfile collection
 # Inspired by https://github.com/mathiasbynens/dotfiles
+# Supports both local and remote installations
 
 set -e
 
@@ -35,6 +36,20 @@ command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
+# Function to show usage
+show_usage() {
+    echo "Usage: $0 [remote-connection-string]"
+    echo ""
+    echo "Examples:"
+    echo "  $0                                    # Install extensions locally"
+    echo "  $0 ssh-remote+user@hostname          # Install on SSH remote"
+    echo "  $0 dev-container+container-name      # Install in dev container"
+    echo "  $0 wsl+distro-name                   # Install in WSL"
+    echo ""
+    echo "To get your current extensions list:"
+    echo "  cursor --list-extensions"
+}
+
 # Function to backup existing extensions
 backup_extensions() {
     local backup_dir="$HOME/.cursor-extensions-backup-$(date +%Y%m%d-%H%M%S)"
@@ -52,28 +67,54 @@ backup_extensions() {
 # Function to install a single extension
 install_extension() {
     local extension="$1"
+    local remote_connection="$2"
+    
     print_status "Installing: $extension"
-    if cursor --install-extension "$extension" > /dev/null 2>&1; then
-        print_success "Installed: $extension"
-        return 0
+    
+    if [ -n "$remote_connection" ]; then
+        # Install on remote instance
+        if cursor --install-extension "$extension" --remote "$remote_connection" > /dev/null 2>&1; then
+            print_success "Installed: $extension (remote: $remote_connection)"
+            return 0
+        else
+            print_error "Failed to install: $extension (remote: $remote_connection)"
+            return 1
+        fi
     else
-        print_error "Failed to install: $extension"
-        return 1
+        # Install locally
+        if cursor --install-extension "$extension" > /dev/null 2>&1; then
+            print_success "Installed: $extension"
+            return 0
+        else
+            print_error "Failed to install: $extension"
+            return 1
+        fi
     fi
 }
 
 # Function to install all extensions
 install_all_extensions() {
+    local remote_connection="$1"
     local failed_extensions=()
     
+    print_status "Installing Cursor extensions..."
+    print_status "Total extensions to install: ${#EXTENSIONS[@]}"
+    if [ -n "$remote_connection" ]; then
+        print_status "Remote connection: $remote_connection"
+    else
+        print_status "Installing locally"
+    fi
+    echo "----------------------------------------"
+    
     for extension in "${EXTENSIONS[@]}"; do
-        if ! install_extension "$extension"; then
+        if ! install_extension "$extension" "$remote_connection"; then
             failed_extensions+=("$extension")
         fi
+        echo ""
     done
     
     # Report results
-    echo ""
+    echo "----------------------------------------"
     if [ ${#failed_extensions[@]} -eq 0 ]; then
         print_success "All extensions installed successfully!"
     else
@@ -84,7 +125,7 @@ install_all_extensions() {
     fi
 }
 
-# Array of extension IDs to install
+# Array of extension IDs to install (updated list)
 EXTENSIONS=(
     "esbenp.prettier-vscode"
     "formulahendry.docker-explorer"
@@ -92,10 +133,17 @@ EXTENSIONS=(
     "golang.go"
     "ms-python.python"
     "ms-python.debugpy"
+    "ms-python.python"
     "ms-python.vscode-pylance"
     "nextfaze.json-parse-stringify"
     "waderyan.gitblame"
 )
+
+# Main script logic
+if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+    show_usage
+    exit 0
+fi
 
 echo -e "${BLUE}🔧 Installing Cursor Extensions${NC}"
 echo "=================================="
@@ -108,11 +156,13 @@ if ! command_exists cursor; then
     exit 1
 fi
 
-# Create backup
-backup_extensions
+# Create backup (only for local installations)
+if [ -z "$1" ]; then
+    backup_extensions
+fi
 
 # Install all extensions
-install_all_extensions
+install_all_extensions "$1"
 
 echo ""
 echo "Installed extensions:"

@@ -3,6 +3,7 @@
 # Bootstrap script for general dotfiles
 # Inspired by https://github.com/mathiasbynens/dotfiles
 # Focused on aliases and cursor extensions only
+# Supports both local and remote installations
 
 set -e
 
@@ -35,6 +36,25 @@ command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
+# Function to show usage
+show_usage() {
+    echo "Usage: $0 [remote-connection-string]"
+    echo ""
+    echo "Examples:"
+    echo "  $0                                    # Bootstrap locally"
+    echo "  $0 ssh-remote+user@hostname          # Bootstrap on SSH remote"
+    echo "  $0 dev-container+container-name      # Bootstrap in dev container"
+    echo "  $0 wsl+distro-name                   # Bootstrap in WSL"
+    echo ""
+    echo "The remote connection string will be passed to the cursor extensions installer."
+}
+
+# Main script logic
+if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+    show_usage
+    exit 0
+fi
+
 echo -e "${BLUE}🚀 General Dotfiles Bootstrap${NC}"
 echo "=================================="
 
@@ -56,7 +76,12 @@ fi
 if command_exists cursor; then
     print_status "Installing Cursor extensions..."
     if [ -f "$DOTFILES_DIR/init/cursor-extensions.sh" ]; then
-        source "$DOTFILES_DIR/init/cursor-extensions.sh"
+        if [ -n "$1" ]; then
+            print_status "Using remote connection: $1"
+            source "$DOTFILES_DIR/init/cursor-extensions.sh" "$1"
+        else
+            source "$DOTFILES_DIR/init/cursor-extensions.sh"
+        fi
     else
         print_warning "Cursor extensions script not found"
     fi
