@@ -119,9 +119,9 @@ install_oh_my_zsh() {
     
     # Install essential plugins
     local plugins=(
-        "zsh-autosuggestions:https://github.com/zsh-users/zsh-autosuggestions"
+        "zsh-autosuggestions:https://github.com/zsh-users/zsh-autosuggestions.git"
         "zsh-syntax-highlighting:https://github.com/zsh-users/zsh-syntax-highlighting.git"
-        "zsh-completions:https://github.com/zsh-users/zsh-completions"
+        "zsh-completions:https://github.com/zsh-users/zsh-completions.git"
     )
     
     for plugin in "${plugins[@]}"; do
@@ -131,8 +131,11 @@ install_oh_my_zsh() {
         
         if [ ! -d "$plugin_dir" ]; then
             print_status "Installing $plugin_name..."
-            git clone "$plugin_url" "$plugin_dir"
-            print_success "$plugin_name installed"
+            if git clone "$plugin_url" "$plugin_dir" 2>/dev/null; then
+                print_success "$plugin_name installed"
+            else
+                print_warning "Failed to install $plugin_name, continuing..."
+            fi
         else
             print_success "$plugin_name already installed"
         fi
