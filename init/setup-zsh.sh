@@ -124,17 +124,42 @@ install_oh_my_zsh() {
         "zsh-completions:https://github.com/zsh-users/zsh-completions.git"
     )
     
+    # Ensure custom plugins directory exists
+    local custom_plugins_dir="$home_dir/.oh-my-zsh/custom/plugins"
+    mkdir -p "$custom_plugins_dir"
+    
     for plugin in "${plugins[@]}"; do
         local plugin_name=$(echo "$plugin" | cut -d: -f1)
         local plugin_url=$(echo "$plugin" | cut -d: -f2)
-        local plugin_dir="$home_dir/.oh-my-zsh/custom/plugins/$plugin_name"
+        
+        # Different paths for different plugins
+        local plugin_dir=""
+        case "$plugin_name" in
+            "zsh-autosuggestions")
+                plugin_dir="$home_dir/.oh-my-zsh/custom/plugins/$plugin_name"
+                ;;
+            "zsh-syntax-highlighting")
+                plugin_dir="$home_dir/.oh-my-zsh/custom/plugins/$plugin_name"
+                ;;
+            "zsh-completions")
+                plugin_dir="$home_dir/.oh-my-zsh/custom/plugins/$plugin_name"
+                ;;
+        esac
         
         if [ ! -d "$plugin_dir" ]; then
             print_status "Installing $plugin_name..."
-            if git clone "$plugin_url" "$plugin_dir" 2>/dev/null; then
+            print_status "Cloning from: $plugin_url"
+            print_status "Installing to: $plugin_dir"
+            if git clone "$plugin_url" "$plugin_dir"; then
                 print_success "$plugin_name installed"
             else
                 print_warning "Failed to install $plugin_name, continuing..."
+                print_status "Checking if directory was created anyway..."
+                if [ -d "$plugin_dir" ]; then
+                    print_success "$plugin_name directory exists, plugin may be available"
+                else
+                    print_warning "$plugin_name directory not found"
+                fi
             fi
         else
             print_success "$plugin_name already installed"
