@@ -39,35 +39,50 @@ command_exists() {
 install_zsh() {
     print_status "Ensuring zsh is installed..."
     
-    if ! command_exists zsh; then
-        print_warning "Zsh is not installed. Installing zsh..."
-        
-        if command_exists apt-get; then
-            # Ubuntu/Debian
-            print_status "Installing zsh via apt-get..."
-            sudo apt-get update
-            sudo apt-get install -y zsh
-        elif command_exists yum; then
-            # CentOS/RHEL
-            print_status "Installing zsh via yum..."
-            sudo yum install -y zsh
-        elif command_exists brew; then
-            # macOS
-            print_status "Installing zsh via Homebrew..."
-            brew install zsh
-        else
-            print_error "No supported package manager found. Please install zsh manually."
-            return 1
-        fi
-        
-        if ! command_exists zsh; then
-            print_error "Failed to install zsh"
-            return 1
-        else
-            print_success "Zsh installed successfully"
-        fi
+    # Debug: Check multiple ways zsh might be available
+    local zsh_path=""
+    if command_exists zsh; then
+        zsh_path=$(which zsh)
+        print_status "Found zsh at: $zsh_path"
+    elif [ -f "/usr/bin/zsh" ]; then
+        zsh_path="/usr/bin/zsh"
+        print_status "Found zsh at: $zsh_path"
+    elif [ -f "/bin/zsh" ]; then
+        zsh_path="/bin/zsh"
+        print_status "Found zsh at: $zsh_path"
+    fi
+    
+    if [ -n "$zsh_path" ]; then
+        print_success "Zsh is already installed at: $zsh_path"
+        return 0
+    fi
+    
+    print_warning "Zsh is not installed. Installing zsh..."
+    
+    if command_exists apt-get; then
+        # Ubuntu/Debian
+        print_status "Installing zsh via apt-get..."
+        sudo apt-get update
+        sudo apt-get install -y zsh
+    elif command_exists yum; then
+        # CentOS/RHEL
+        print_status "Installing zsh via yum..."
+        sudo yum install -y zsh
+    elif command_exists brew; then
+        # macOS
+        print_status "Installing zsh via Homebrew..."
+        brew install zsh
     else
-        print_success "Zsh is already installed"
+        print_error "No supported package manager found. Please install zsh manually."
+        return 1
+    fi
+    
+    # Check again after installation
+    if command_exists zsh; then
+        print_success "Zsh installed successfully at: $(which zsh)"
+    else
+        print_error "Failed to install zsh"
+        return 1
     fi
 }
 
@@ -75,9 +90,25 @@ install_zsh() {
 set_zsh_default() {
     print_status "Setting zsh as default shell..."
     
-    local zsh_path=$(which zsh)
-    local current_shell=""
+    # Find zsh path
+    local zsh_path=""
+    if command_exists zsh; then
+        zsh_path=$(which zsh)
+    elif [ -f "/usr/bin/zsh" ]; then
+        zsh_path="/usr/bin/zsh"
+    elif [ -f "/bin/zsh" ]; then
+        zsh_path="/bin/zsh"
+    fi
     
+    if [ -z "$zsh_path" ]; then
+        print_error "Cannot find zsh installation"
+        return 1
+    fi
+    
+    print_status "Zsh path: $zsh_path"
+    
+    # Get current default shell
+    local current_shell=""
     if command_exists dscl; then
         # macOS
         current_shell=$(dscl . -read /Users/$USER UserShell | awk '{print $2}')
@@ -85,6 +116,8 @@ set_zsh_default() {
         # Linux
         current_shell=$(getent passwd $USER | cut -d: -f7)
     fi
+    
+    print_status "Current default shell: $current_shell"
     
     if [ "$current_shell" != "$zsh_path" ]; then
         print_warning "Current default shell is not zsh: $current_shell"
@@ -379,7 +412,7 @@ setup_zsh() {
     local skipped_components=()
     
     # Install zsh if needed
-    if ! command_exists zsh; then
+    if ! command_exists zsh && [ ! -f "/usr/bin/zsh" ] && [ ! -f "/bin/zsh" ]; then
         install_zsh
         installed_components+=("zsh")
     else
@@ -388,7 +421,15 @@ setup_zsh() {
     fi
     
     # Set zsh as default shell if needed
-    local zsh_path=$(which zsh)
+    local zsh_path=""
+    if command_exists zsh; then
+        zsh_path=$(which zsh)
+    elif [ -f "/usr/bin/zsh" ]; then
+        zsh_path="/usr/bin/zsh"
+    elif [ -f "/bin/zsh" ]; then
+        zsh_path="/bin/zsh"
+    fi
+    
     local current_shell=""
     if command_exists dscl; then
         current_shell=$(dscl . -read /Users/$USER UserShell | awk '{print $2}')
