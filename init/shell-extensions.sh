@@ -128,16 +128,6 @@ setup_bash_extensions() {
             print_success "bash-completion already installed"
         fi
     fi
-    
-    # Install fzf (fuzzy finder)
-    if [ ! -d "$home_dir/.fzf" ]; then
-        print_status "Installing fzf..."
-        git clone --depth 1 https://github.com/junegunn/fzf.git "$home_dir/.fzf"
-        "$home_dir/.fzf/install" --all
-        print_success "fzf installed"
-    else
-        print_success "fzf already installed"
-    fi
 }
 
 # Function to configure shell config file
@@ -216,23 +206,6 @@ EOF
         fi
     fi
     
-    # Add fzf configuration
-    if ! grep -q "fzf" "$shell_config" 2>/dev/null; then
-        cat >> "$shell_config" << 'EOF'
-
-# FZF configuration
-if [ -f ~/.fzf.bash ]; then
-    source ~/.fzf.bash
-elif [ -f ~/.fzf.zsh ]; then
-    source ~/.fzf.zsh
-fi
-
-EOF
-        print_success "FZF configuration added to $shell_config"
-    else
-        print_success "FZF already configured in $shell_config"
-    fi
-    
     # Add dotfiles aliases source
     local source_line="source \"$dotfiles_dir/.aliases\""
     if ! grep -q "$source_line" "$shell_config" 2>/dev/null; then
@@ -268,7 +241,6 @@ install_shell_extensions() {
         "tree"
         "htop"
         "jq"
-        "fzf"
     )
     
     install_packages "${packages[@]}"
@@ -324,7 +296,6 @@ install_shell_extensions() {
     echo "  - zsh-syntax-highlighting"
     echo "  - zsh-completions"
     echo "  - bash-completion (for bash)"
-    echo "  - fzf (fuzzy finder)"
     echo "  - Essential packages (git, curl, wget, tree, htop, jq)"
     echo ""
     print_status "Please restart your terminal or run 'source $shell_config' to see the changes."
