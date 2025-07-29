@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# Shell Extensions Installer
+# Zsh Extensions Installer
 # Part of the general dotfile collection
-# Installs and configures important shell extensions for productivity
+# Installs and configures important zsh extensions for productivity
 
 set -e
 
@@ -69,7 +69,7 @@ install_packages() {
     fi
 }
 
-# Function to setup zsh with Oh My Zsh
+# Function to setup zsh with Oh My Zsh and plugins
 setup_zsh_extensions() {
     local home_dir="$1"
     
@@ -112,50 +112,29 @@ setup_zsh_extensions() {
     fi
 }
 
-# Function to setup bash extensions
-setup_bash_extensions() {
-    local home_dir="$1"
+# Function to configure zsh config file
+configure_zsh_config() {
+    local zshrc_file="$1"
+    local home_dir="$2"
+    local dotfiles_dir="$3"
     
-    print_status "Setting up Bash extensions..."
-    
-    # Install bash-completion
-    if command_exists brew; then
-        if ! brew list bash-completion >/dev/null 2>&1; then
-            print_status "Installing bash-completion..."
-            brew install bash-completion
-            print_success "bash-completion installed"
-        else
-            print_success "bash-completion already installed"
-        fi
-    fi
-}
-
-# Function to configure shell config file
-configure_shell_config() {
-    local shell_config="$1"
-    local shell_type="$2"
-    local home_dir="$3"
-    local dotfiles_dir="$4"
-    
-    print_status "Configuring $shell_config..."
+    print_status "Configuring $zshrc_file..."
     
     # Create config file if it doesn't exist
-    if [ ! -f "$shell_config" ]; then
-        print_status "Creating $shell_config"
-        touch "$shell_config"
+    if [ ! -f "$zshrc_file" ]; then
+        print_status "Creating $zshrc_file"
+        touch "$zshrc_file"
     fi
     
     # Backup existing config
-    if [ -f "$shell_config" ] && [ -s "$shell_config" ]; then
-        cp "$shell_config" "$shell_config.backup.$(date +%Y%m%d-%H%M%S)"
-        print_status "Backup created: $shell_config.backup.$(date +%Y%m%d-%H%M%S)"
+    if [ -f "$zshrc_file" ] && [ -s "$zshrc_file" ]; then
+        cp "$zshrc_file" "$zshrc_file.backup.$(date +%Y%m%d-%H%M%S)"
+        print_status "Backup created: $zshrc_file.backup.$(date +%Y%m%d-%H%M%S)"
     fi
     
-    # Add Oh My Zsh configuration for zsh
-    if [ "$shell_type" = "zsh" ]; then
-        # Check if Oh My Zsh is already configured
-        if ! grep -q "export ZSH=" "$shell_config" 2>/dev/null; then
-            cat >> "$shell_config" << 'EOF'
+    # Add Oh My Zsh configuration
+    if ! grep -q "export ZSH=" "$zshrc_file" 2>/dev/null; then
+        cat >> "$zshrc_file" << 'EOF'
 
 # Oh My Zsh Configuration
 export ZSH="$HOME/.oh-my-zsh"
@@ -183,38 +162,20 @@ source $ZSH/oh-my-zsh.sh
 autoload -U compinit && compinit
 
 EOF
-            print_success "Oh My Zsh configuration added to $shell_config"
-        else
-            print_success "Oh My Zsh already configured in $shell_config"
-        fi
-    fi
-    
-    # Add bash-completion for bash
-    if [ "$shell_type" = "bash" ]; then
-        if ! grep -q "bash_completion" "$shell_config" 2>/dev/null; then
-            cat >> "$shell_config" << 'EOF'
-
-# Bash completion
-if [ -f $(brew --prefix)/etc/bash_completion ]; then
-    . $(brew --prefix)/etc/bash_completion
-fi
-
-EOF
-            print_success "Bash completion configuration added to $shell_config"
-        else
-            print_success "Bash completion already configured in $shell_config"
-        fi
+        print_success "Oh My Zsh configuration added to $zshrc_file"
+    else
+        print_success "Oh My Zsh already configured in $zshrc_file"
     fi
     
     # Add dotfiles aliases source
     local source_line="source \"$dotfiles_dir/.aliases\""
-    if ! grep -q "$source_line" "$shell_config" 2>/dev/null; then
-        echo "" >> "$shell_config"
-        echo "# Source dotfiles aliases" >> "$shell_config"
-        echo "$source_line" >> "$shell_config"
-        print_success "Aliases source added to $shell_config"
+    if ! grep -q "$source_line" "$zshrc_file" 2>/dev/null; then
+        echo "" >> "$zshrc_file"
+        echo "# Source dotfiles aliases" >> "$zshrc_file"
+        echo "$source_line" >> "$zshrc_file"
+        print_success "Aliases source added to $zshrc_file"
     else
-        print_success "Aliases already configured in $shell_config"
+        print_success "Aliases already configured in $zshrc_file"
     fi
 }
 
@@ -222,15 +183,17 @@ EOF
 install_shell_extensions() {
     local remote_connection="$1"
     
-    echo -e "${BLUE}🔧 Installing Shell Extensions${NC}"
+    echo -e "${BLUE}🔧 Installing Zsh Extensions${NC}"
     echo "=================================="
     
     # Get home directory
     local home_dir="$HOME"
     local dotfiles_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+    local zshrc_file="$home_dir/.zshrc"
     
     print_status "Home directory: $home_dir"
     print_status "Dotfiles directory: $dotfiles_dir"
+    print_status "Zshrc file: $zshrc_file"
     
     # Install essential packages
     print_status "Installing essential packages..."
@@ -245,58 +208,20 @@ install_shell_extensions() {
     
     install_packages "${packages[@]}"
     
-    # Determine shell and setup accordingly
-    local shell_config=""
-    local shell_type=""
+    # Setup zsh extensions
+    setup_zsh_extensions "$home_dir"
     
-    if [ -n "$ZSH_VERSION" ]; then
-        shell_type="zsh"
-        shell_config="$home_dir/.zshrc"
-    elif [ -n "$BASH_VERSION" ]; then
-        shell_type="bash"
-        shell_config="$home_dir/.bashrc"
-    else
-        # Try to detect shell
-        local current_shell=$(basename "$SHELL")
-        case "$current_shell" in
-            "zsh")
-                shell_type="zsh"
-                shell_config="$home_dir/.zshrc"
-                ;;
-            "bash")
-                shell_type="bash"
-                shell_config="$home_dir/.bashrc"
-                ;;
-            *)
-                print_warning "Unknown shell: $current_shell, defaulting to bash"
-                shell_type="bash"
-                shell_config="$home_dir/.bashrc"
-                ;;
-        esac
-    fi
+    # Configure zsh config file
+    configure_zsh_config "$zshrc_file" "$home_dir" "$dotfiles_dir"
     
-    print_status "Detected shell: $shell_type"
-    print_status "Config file: $shell_config"
-    
-    # Setup shell-specific extensions
-    if [ "$shell_type" = "zsh" ]; then
-        setup_zsh_extensions "$home_dir"
-    else
-        setup_bash_extensions "$home_dir"
-    fi
-    
-    # Configure shell config file
-    configure_shell_config "$shell_config" "$shell_type" "$home_dir" "$dotfiles_dir"
-    
-    print_success "Shell extensions installation completed!"
+    print_success "Zsh extensions installation completed!"
     echo ""
-    print_status "Installed extensions:"
-    echo "  - Oh My Zsh (for zsh)"
+    print_status "Installed zsh extensions:"
+    echo "  - Oh My Zsh"
     echo "  - zsh-autosuggestions"
     echo "  - zsh-syntax-highlighting"
     echo "  - zsh-completions"
-    echo "  - bash-completion (for bash)"
     echo "  - Essential packages (git, curl, wget, tree, htop, jq)"
     echo ""
-    print_status "Please restart your terminal or run 'source $shell_config' to see the changes."
+    print_status "Please restart your terminal or run 'source $zshrc_file' to see the changes."
 } 
