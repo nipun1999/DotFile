@@ -129,8 +129,8 @@ install_oh_my_zsh() {
     mkdir -p "$custom_plugins_dir"
     
     for plugin in "${plugins[@]}"; do
-        local plugin_name=$(echo "$plugin" | cut -d: -f1)
-        local plugin_url=$(echo "$plugin" | cut -d: -f2)
+        local plugin_name=$(echo "$plugin" | sed 's/:.*//')
+        local plugin_url=$(echo "$plugin" | sed 's/^[^:]*://')
         
         # Different paths for different plugins
         local plugin_dir=""
