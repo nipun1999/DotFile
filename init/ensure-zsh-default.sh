@@ -41,10 +41,36 @@ set_zsh_default() {
     
     # Check if zsh is available
     if ! command_exists zsh; then
-        print_error "Zsh is not installed. Please install zsh first."
-        print_status "On macOS: brew install zsh"
-        print_status "On Ubuntu: sudo apt-get install zsh"
-        return 1
+        print_warning "Zsh is not installed. Installing zsh..."
+        
+        # Install zsh based on the system
+        if command_exists apt-get; then
+            # Ubuntu/Debian
+            print_status "Installing zsh via apt-get..."
+            sudo apt-get update
+            sudo apt-get install -y zsh
+        elif command_exists yum; then
+            # CentOS/RHEL
+            print_status "Installing zsh via yum..."
+            sudo yum install -y zsh
+        elif command_exists brew; then
+            # macOS
+            print_status "Installing zsh via Homebrew..."
+            brew install zsh
+        else
+            print_error "No supported package manager found. Please install zsh manually."
+            print_status "On Ubuntu: sudo apt-get install zsh"
+            print_status "On CentOS: sudo yum install zsh"
+            print_status "On macOS: brew install zsh"
+            return 1
+        fi
+        
+        if ! command_exists zsh; then
+            print_error "Failed to install zsh"
+            return 1
+        else
+            print_success "Zsh installed successfully"
+        fi
     fi
     
     local zsh_path=$(which zsh)
@@ -71,7 +97,7 @@ set_zsh_default() {
             print_warning "You may need to log out and log back in for changes to take effect"
         else
             print_error "Failed to set zsh as default shell"
-            return 1
+            print_warning "Continuing with current shell..."
         fi
     else
         print_success "Zsh is already the default shell: $current_shell"
@@ -126,8 +152,16 @@ ensure_zsh_config_loaded() {
 setup_cursor_terminal() {
     print_status "Setting up Cursor terminal configuration..."
     
-    # Create Cursor settings directory if it doesn't exist
-    local cursor_settings_dir="$HOME/Library/Application Support/Cursor/User"
+    # Determine the correct settings directory based on OS
+    local cursor_settings_dir=""
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        # macOS
+        cursor_settings_dir="$HOME/Library/Application Support/Cursor/User"
+    else
+        # Linux
+        cursor_settings_dir="$HOME/.config/Cursor/User"
+    fi
+    
     if [ ! -d "$cursor_settings_dir" ]; then
         mkdir -p "$cursor_settings_dir"
     fi
@@ -139,10 +173,10 @@ setup_cursor_terminal() {
         print_status "Creating Cursor settings file..."
         cat > "$settings_file" << 'EOF'
 {
-    "terminal.integrated.defaultProfile.osx": "zsh",
-    "terminal.integrated.profiles.osx": {
+    "terminal.integrated.defaultProfile.linux": "zsh",
+    "terminal.integrated.profiles.linux": {
         "zsh": {
-            "path": "/bin/zsh",
+            "path": "/usr/bin/zsh",
             "args": ["-l"]
         }
     }
@@ -151,7 +185,7 @@ EOF
         print_success "Created Cursor settings with zsh configuration"
     else
         print_status "Cursor settings file already exists"
-        print_status "You may need to manually configure terminal.integrated.defaultProfile.osx to 'zsh'"
+        print_status "You may need to manually configure terminal.integrated.defaultProfile.linux to 'zsh'"
     fi
 }
 

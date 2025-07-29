@@ -93,15 +93,49 @@ ensure_zsh_default() {
     
     # Check if zsh is available
     if ! command_exists zsh; then
-        print_error "Zsh is not installed. Please install zsh first."
-        print_status "On macOS: brew install zsh"
-        print_status "On Ubuntu: sudo apt-get install zsh"
-        return 1
+        print_warning "Zsh is not installed. Installing zsh..."
+        
+        # Install zsh based on the system
+        if command_exists apt-get; then
+            # Ubuntu/Debian
+            print_status "Installing zsh via apt-get..."
+            sudo apt-get update
+            sudo apt-get install -y zsh
+        elif command_exists yum; then
+            # CentOS/RHEL
+            print_status "Installing zsh via yum..."
+            sudo yum install -y zsh
+        elif command_exists brew; then
+            # macOS
+            print_status "Installing zsh via Homebrew..."
+            brew install zsh
+        else
+            print_error "No supported package manager found. Please install zsh manually."
+            print_status "On Ubuntu: sudo apt-get install zsh"
+            print_status "On CentOS: sudo yum install zsh"
+            print_status "On macOS: brew install zsh"
+            return 1
+        fi
+        
+        if ! command_exists zsh; then
+            print_error "Failed to install zsh"
+            return 1
+        else
+            print_success "Zsh installed successfully"
+        fi
     fi
     
     # Check current default shell
-    local current_shell=$(dscl . -read /Users/$USER UserShell | awk '{print $2}')
+    local current_shell=""
     local zsh_path=$(which zsh)
+    
+    if command_exists dscl; then
+        # macOS
+        current_shell=$(dscl . -read /Users/$USER UserShell | awk '{print $2}')
+    else
+        # Linux
+        current_shell=$(getent passwd $USER | cut -d: -f7)
+    fi
     
     if [ "$current_shell" != "$zsh_path" ]; then
         print_warning "Current default shell is not zsh: $current_shell"
@@ -115,7 +149,7 @@ ensure_zsh_default() {
             print_warning "You may need to log out and log back in for changes to take effect"
         else
             print_error "Failed to set zsh as default shell"
-            return 1
+            print_warning "Continuing with current shell..."
         fi
     else
         print_success "Zsh is already the default shell: $current_shell"
