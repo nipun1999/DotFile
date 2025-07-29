@@ -155,6 +155,32 @@ ensure_zsh_default() {
         print_success "Zsh is already the default shell: $current_shell"
     fi
     
+    # Create basic .zshrc immediately to prevent zsh-newuser-install
+    local zshrc_file="$HOME/.zshrc"
+    if [ ! -f "$zshrc_file" ]; then
+        print_status "Creating basic .zshrc to prevent new user setup..."
+        cat > "$zshrc_file" << 'EOF'
+# Basic zsh configuration
+# Created by dotfiles bootstrap script
+
+# Basic prompt
+PROMPT='%n@%m %~ %# '
+
+# Basic history settings
+HISTSIZE=5000
+SAVEHIST=5000
+HISTFILE=~/.zsh_history
+setopt SHARE_HISTORY
+setopt HIST_IGNORE_ALL_DUPS
+
+# Basic completions
+autoload -U compinit && compinit
+
+# This prevents the zsh-newuser-install prompt
+EOF
+        print_success "Basic .zshrc created to prevent new user setup"
+    fi
+    
     # Check if current session is using zsh
     if [ "$SHELL" != "$zsh_path" ] && [ "$SHELL" != "/bin/zsh" ] && [ "$SHELL" != "/usr/bin/zsh" ]; then
         print_warning "Current session is not using zsh: $SHELL"
