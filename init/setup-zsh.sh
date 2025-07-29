@@ -108,13 +108,18 @@ install_oh_my_zsh() {
     
     print_status "Installing Oh My Zsh and plugins..."
     
+    local omz_installed=0
+    local omz_skipped=0
+    
     # Install Oh My Zsh
     if [ ! -d "$home_dir/.oh-my-zsh" ]; then
         print_status "Installing Oh My Zsh..."
         sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
         print_success "Oh My Zsh installed"
+        ((omz_installed++))
     else
         print_success "Oh My Zsh already installed"
+        ((omz_skipped++))
     fi
     
     # Install essential plugins
@@ -152,19 +157,30 @@ install_oh_my_zsh() {
             print_status "Installing to: $plugin_dir"
             if git clone "$plugin_url" "$plugin_dir"; then
                 print_success "$plugin_name installed"
+                ((omz_installed++))
             else
                 print_warning "Failed to install $plugin_name, continuing..."
                 print_status "Checking if directory was created anyway..."
                 if [ -d "$plugin_dir" ]; then
                     print_success "$plugin_name directory exists, plugin may be available"
+                    ((omz_installed++))
                 else
                     print_warning "$plugin_name directory not found"
                 fi
             fi
         else
             print_success "$plugin_name already installed"
+            ((omz_skipped++))
         fi
     done
+    
+    # Return Oh My Zsh installation status
+    if [ $omz_installed -gt 0 ]; then
+        echo "omz_installed:$omz_installed"
+    fi
+    if [ $omz_skipped -gt 0 ]; then
+        echo "omz_skipped:$omz_skipped"
+    fi
 }
 
 # Function to create comprehensive .zshrc
@@ -292,16 +308,20 @@ EOF
 install_packages() {
     print_status "Installing essential packages..."
     
-    local packages=("git" "curl" "wget" "tree" "htop" "jq")
+    local packages=("curl" "wget" "tree" "htop" "jq")
+    local installed_count=0
+    local skipped_count=0
     
     if command_exists apt-get; then
         # Ubuntu/Debian
         for package in "${packages[@]}"; do
             if dpkg -l | grep -q "^ii  $package "; then
                 print_success "$package already installed"
+                ((skipped_count++))
             else
                 print_status "Installing $package..."
                 sudo apt-get install -y "$package"
+                ((installed_count++))
             fi
         done
     elif command_exists yum; then
@@ -309,9 +329,11 @@ install_packages() {
         for package in "${packages[@]}"; do
             if rpm -q "$package" >/dev/null 2>&1; then
                 print_success "$package already installed"
+                ((skipped_count++))
             else
                 print_status "Installing $package..."
                 sudo yum install -y "$package"
+                ((installed_count++))
             fi
         done
     elif command_exists brew; then
@@ -319,13 +341,23 @@ install_packages() {
         for package in "${packages[@]}"; do
             if brew list "$package" >/dev/null 2>&1; then
                 print_success "$package already installed"
+                ((skipped_count++))
             else
                 print_status "Installing $package..."
                 brew install "$package"
+                ((installed_count++))
             fi
         done
     else
         print_warning "No supported package manager found, skipping package installation"
+    fi
+    
+    # Return package installation status
+    if [ $installed_count -gt 0 ]; then
+        echo "packages_installed:$installed_count"
+    fi
+    if [ $skipped_count -gt 0 ]; then
+        echo "packages_skipped:$skipped_count"
     fi
 }
 
@@ -351,6 +383,7 @@ setup_zsh() {
         install_zsh
         installed_components+=("zsh")
     else
+        print_success "Zsh is already installed"
         skipped_components+=("zsh")
     fi
     
@@ -367,16 +400,33 @@ setup_zsh() {
         set_zsh_default
         installed_components+=("default shell")
     else
+        print_success "Zsh is already the default shell"
         skipped_components+=("default shell")
     fi
     
     # Install packages
-    install_packages
-    installed_components+=("essential packages")
+    local package_results=$(install_packages)
+    local packages_installed=$(echo "$package_results" | grep "packages_installed:" | cut -d: -f2)
+    local packages_skipped=$(echo "$package_results" | grep "packages_skipped:" | cut -d: -f2)
+    
+    if [ -n "$packages_installed" ] && [ "$packages_installed" -gt 0 ]; then
+        installed_components+=("essential packages ($packages_installed new)")
+    fi
+    if [ -n "$packages_skipped" ] && [ "$packages_skipped" -gt 0 ]; then
+        skipped_components+=("essential packages ($packages_skipped existing)")
+    fi
     
     # Install Oh My Zsh and plugins
-    install_oh_my_zsh "$home_dir"
-    installed_components+=("Oh My Zsh and plugins")
+    local omz_results=$(install_oh_my_zsh "$home_dir")
+    local omz_installed=$(echo "$omz_results" | grep "omz_installed:" | cut -d: -f2)
+    local omz_skipped=$(echo "$omz_results" | grep "omz_skipped:" | cut -d: -f2)
+    
+    if [ -n "$omz_installed" ] && [ "$omz_installed" -gt 0 ]; then
+        installed_components+=("Oh My Zsh and plugins ($omz_installed new)")
+    fi
+    if [ -n "$omz_skipped" ] && [ "$omz_skipped" -gt 0 ]; then
+        skipped_components+=("Oh My Zsh and plugins ($omz_skipped existing)")
+    fi
     
     # Create .zshrc
     if create_zshrc "$home_dir" "$dotfiles_dir"; then
