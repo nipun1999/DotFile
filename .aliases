@@ -54,14 +54,6 @@ alias now='date +"%T"'
 alias nowtime=now
 alias nowdate='date +"%d-%m-%Y"'
 
-# macOS specific aliases
-if [[ "$OSTYPE" == "darwin"* ]]; then
-    alias showfiles='defaults write com.apple.finder AppleShowAllFiles YES; killall Finder /System/Library/CoreServices/Finder.app'
-    alias hidefiles='defaults write com.apple.finder AppleShowAllFiles NO; killall Finder /System/Library/CoreServices/Finder.app'
-    alias flushdns='sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder'
-    alias cleanup="find . -type f -name '*.DS_Store' -ls -delete"
-fi
-
 # Network aliases
 alias myip='curl http://ipecho.net/plain; echo'
 alias ports='netstat -tulanp'

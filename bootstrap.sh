@@ -49,6 +49,75 @@ show_usage() {
     echo "The remote connection string will be passed to the cursor extensions installer."
 }
 
+# Function to setup aliases in shell config
+setup_aliases() {
+    local dotfiles_dir="$1"
+    local aliases_file="$dotfiles_dir/.aliases"
+    
+    if [ ! -f "$aliases_file" ]; then
+        print_warning "Aliases file not found at $aliases_file"
+        return 1
+    fi
+    
+    print_status "Setting up aliases in shell configuration..."
+    
+    # Determine shell and config file
+    local shell_config=""
+    local shell_name=""
+    
+    if [ -n "$ZSH_VERSION" ]; then
+        shell_name="zsh"
+        shell_config="$HOME/.zshrc"
+    elif [ -n "$BASH_VERSION" ]; then
+        shell_name="bash"
+        shell_config="$HOME/.bashrc"
+    else
+        # Try to detect shell
+        local current_shell=$(basename "$SHELL")
+        case "$current_shell" in
+            "zsh")
+                shell_name="zsh"
+                shell_config="$HOME/.zshrc"
+                ;;
+            "bash")
+                shell_name="bash"
+                shell_config="$HOME/.bashrc"
+                ;;
+            *)
+                print_warning "Unknown shell: $current_shell, defaulting to bash"
+                shell_name="bash"
+                shell_config="$HOME/.bashrc"
+                ;;
+        esac
+    fi
+    
+    print_status "Detected shell: $shell_name"
+    print_status "Config file: $shell_config"
+    
+    # Create config file if it doesn't exist
+    if [ ! -f "$shell_config" ]; then
+        print_status "Creating $shell_config"
+        touch "$shell_config"
+    fi
+    
+    # Check if aliases are already sourced in the config
+    local source_line="source \"$aliases_file\""
+    if grep -q "$source_line" "$shell_config" 2>/dev/null; then
+        print_success "Aliases already configured in $shell_config"
+    else
+        # Add source line to config file
+        echo "" >> "$shell_config"
+        echo "# Source dotfiles aliases" >> "$shell_config"
+        echo "$source_line" >> "$shell_config"
+        print_success "Added aliases source to $shell_config"
+    fi
+    
+    # Also source aliases for current session
+    print_status "Sourcing aliases for current session..."
+    source "$aliases_file"
+    print_success "Aliases loaded for current session"
+}
+
 # Main script logic
 if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
     show_usage
@@ -63,14 +132,8 @@ DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 print_status "Dotfiles directory: $DOTFILES_DIR"
 
-# Source aliases
-if [ -f "$DOTFILES_DIR/.aliases" ]; then
-    print_status "Sourcing .aliases"
-    source "$DOTFILES_DIR/.aliases"
-    print_success "Aliases loaded"
-else
-    print_warning "Aliases file not found"
-fi
+# Setup aliases
+setup_aliases "$DOTFILES_DIR"
 
 # Install Cursor extensions if cursor CLI is available
 if command_exists cursor; then
@@ -91,4 +154,6 @@ fi
 
 print_success "Bootstrap complete!"
 echo ""
-print_status "You may need to restart your terminal or run 'source ~/.bashrc' (or ~/.zshrc) for changes to take effect." 
+print_status "Aliases have been added to your shell configuration."
+print_status "You may need to restart your terminal or run 'source ~/.bashrc' (or ~/.zshrc) for changes to take effect."
+print_status "Alternatively, you can start a new shell session to see the aliases in action." 
