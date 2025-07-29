@@ -2,7 +2,7 @@
 
 # Bootstrap script for general dotfiles
 # Inspired by https://github.com/mathiasbynens/dotfiles
-# Focused on aliases and cursor extensions only
+# Focused on aliases, shell extensions, and cursor extensions
 # Supports both local and remote installations
 
 set -e
@@ -135,6 +135,15 @@ print_status "Dotfiles directory: $DOTFILES_DIR"
 # Setup aliases
 setup_aliases "$DOTFILES_DIR"
 
+# Install shell extensions
+if [ -f "$DOTFILES_DIR/init/shell-extensions.sh" ]; then
+    print_status "Installing shell extensions..."
+    source "$DOTFILES_DIR/init/shell-extensions.sh"
+    install_shell_extensions "$1"
+else
+    print_warning "Shell extensions script not found"
+fi
+
 # Install Cursor extensions if cursor CLI is available
 if command_exists cursor; then
     print_status "Installing Cursor extensions..."
@@ -155,5 +164,6 @@ fi
 print_success "Bootstrap complete!"
 echo ""
 print_status "Aliases have been added to your shell configuration."
+print_status "Shell extensions have been installed and configured."
 print_status "You may need to restart your terminal or run 'source ~/.bashrc' (or ~/.zshrc) for changes to take effect."
-print_status "Alternatively, you can start a new shell session to see the aliases in action." 
+print_status "Alternatively, you can start a new shell session to see all the improvements." 
