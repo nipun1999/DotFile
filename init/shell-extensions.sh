@@ -73,7 +73,7 @@ install_packages() {
 setup_zsh_extensions() {
     local home_dir="$1"
     
-    print_status "Setting up Zsh extensions..."
+    print_status "Setting up basic Zsh extensions..."
     
     # Install Oh My Zsh if not already installed
     if [ ! -d "$home_dir/.oh-my-zsh" ]; then
@@ -118,7 +118,7 @@ configure_zsh_config() {
     local home_dir="$2"
     local dotfiles_dir="$3"
     
-    print_status "Configuring $zshrc_file..."
+    print_status "Configuring basic $zshrc_file..."
     
     # Create config file if it doesn't exist
     if [ ! -f "$zshrc_file" ]; then
@@ -132,24 +132,19 @@ configure_zsh_config() {
         print_status "Backup created: $zshrc_file.backup.$(date +%Y%m%d-%H%M%S)"
     fi
     
-    # Add Oh My Zsh configuration
+    # Add basic Oh My Zsh configuration
     if ! grep -q "export ZSH=" "$zshrc_file" 2>/dev/null; then
         cat >> "$zshrc_file" << 'EOF'
 
-# Oh My Zsh Configuration
+# Basic Oh My Zsh Configuration
 export ZSH="$HOME/.oh-my-zsh"
 
-# Theme
-ZSH_THEME="robbyrussell"
+# No theme (basic)
+ZSH_THEME=""
 
-# Plugins
+# Essential plugins only
 plugins=(
     git
-    docker
-    python
-    node
-    npm
-    yarn
     zsh-autosuggestions
     zsh-syntax-highlighting
     zsh-completions
@@ -158,11 +153,16 @@ plugins=(
 # Load Oh My Zsh
 source $ZSH/oh-my-zsh.sh
 
-# Additional completions
+# Basic completions
 autoload -U compinit && compinit
 
+# Basic prompt if no theme
+if [ -z "$ZSH_THEME" ]; then
+    PROMPT='%n@%m %~ %# '
+fi
+
 EOF
-        print_success "Oh My Zsh configuration added to $zshrc_file"
+        print_success "Basic Oh My Zsh configuration added to $zshrc_file"
     else
         print_success "Oh My Zsh already configured in $zshrc_file"
     fi
@@ -214,10 +214,10 @@ install_shell_extensions() {
     # Configure zsh config file
     configure_zsh_config "$zshrc_file" "$home_dir" "$dotfiles_dir"
     
-    print_success "Zsh extensions installation completed!"
+    print_success "Basic zsh extensions installation completed!"
     echo ""
-    print_status "Installed zsh extensions:"
-    echo "  - Oh My Zsh"
+    print_status "Installed basic zsh extensions:"
+    echo "  - Oh My Zsh (basic setup)"
     echo "  - zsh-autosuggestions"
     echo "  - zsh-syntax-highlighting"
     echo "  - zsh-completions"

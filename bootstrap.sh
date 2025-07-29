@@ -182,6 +182,15 @@ print_status "Dotfiles directory: $DOTFILES_DIR"
 # Ensure zsh is the default shell
 ensure_zsh_default
 
+# Create comprehensive .zshrc if it doesn't exist
+if [ -f "$DOTFILES_DIR/init/create-zshrc.sh" ]; then
+    print_status "Creating comprehensive .zshrc file..."
+    source "$DOTFILES_DIR/init/create-zshrc.sh"
+    main
+else
+    print_warning "Create zshrc script not found"
+fi
+
 # Setup zsh configuration
 setup_zsh_config "$DOTFILES_DIR"
 
